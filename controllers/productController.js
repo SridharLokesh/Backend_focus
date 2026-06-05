@@ -3,24 +3,45 @@ import Notification from '../models/Notification.js';
 import mongoose from 'mongoose';
 
 // ── helpers ───────────────────────────────────────────────────────────
-
-/** Escape special regex characters so user input can't break the query */
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const buildQuery = (req) => {
-  const { category, sub, search, dealer: dealerFilter } = req.query;
+  const {
+    category, categorySlug, categoryRaw,
+    sub, search, dealer: dealerFilter,
+  } = req.query;
+
   const query = {};
 
   if (category && category !== 'All') {
-    query.category = { $regex: `^${escapeRegex(category)}$`, $options: 'i' };
+    // Match against every possible form the category might be stored as:
+    //   "Engine Parts"  (name)
+    //   "engine-parts"  (slug / URL param)
+    //   "Engine"        (first word — handles old seeded products)
+    const terms = [...new Set([category, categorySlug, categoryRaw].filter(Boolean))];
+
+    const orClauses = terms.map(t => ({
+      category: { $regex: `^${escapeRegex(t)}$`, $options: 'i' },
+    }));
+
+    // Also partial-match on the first meaningful word of the name
+    // so "Engine Parts" also finds products stored as "Engine"
+    const firstWord = category.split(/[\s-]+/)[0];
+    if (firstWord && firstWord.length > 2) {
+      orClauses.push({ category: { $regex: escapeRegex(firstWord), $options: 'i' } });
+    }
+
+    query.$or = orClauses;
   }
+
   if (sub) {
     query.subCategory = { $regex: `^${escapeRegex(sub)}$`, $options: 'i' };
   }
-  // Validate dealer ObjectId before filtering to avoid CastError → 500
+
   if (dealerFilter && mongoose.isValidObjectId(dealerFilter)) {
     query.dealer = dealerFilter;
   }
+
   if (search) {
     const s = escapeRegex(search);
     query.$or = [
@@ -31,6 +52,7 @@ const buildQuery = (req) => {
       { tags:        { $regex: s, $options: 'i' } },
     ];
   }
+
   return query;
 };
 
@@ -44,17 +66,17 @@ const parseArrayField = (value) => {
 export const getProducts = async (req, res) => {
   try {
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit = Math.min(100, parseInt(req.query.limit) || 20); // cap at 100
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const sort  = req.query.sort || '-createdAt';
 
-    const query   = buildQuery(req);
-    const total   = await Product.countDocuments(query);
+    const query    = buildQuery(req);
+    const total    = await Product.countDocuments(query);
     const products = await Product.find(query)
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit)
       .populate('dealer', 'dealerId businessName')
-      .lean();                              // lean() is faster for read-only lists
+      .lean();
 
     res.json({ products, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
@@ -97,7 +119,19 @@ export const getProductsByCategory = async (req, res) => {
     const sort  = req.query.sort || '-createdAt';
     const { sub } = req.query;
 
-    const query = { category: { $regex: `^${escapeRegex(slug)}$`, $options: 'i' } };
+    // Match slug, name-from-slug, or first word
+    const nameFromSlug = slug.replace(/-/g, ' ');
+    const firstWord    = slug.split('-')[0];
+
+    const orClauses = [
+      { category: { $regex: `^${escapeRegex(slug)}$`,         $options: 'i' } },
+      { category: { $regex: `^${escapeRegex(nameFromSlug)}$`, $options: 'i' } },
+    ];
+    if (firstWord && firstWord.length > 2) {
+      orClauses.push({ category: { $regex: escapeRegex(firstWord), $options: 'i' } });
+    }
+
+    const query = { $or: orClauses };
     if (sub) query.subCategory = { $regex: `^${escapeRegex(sub)}$`, $options: 'i' };
 
     const total    = await Product.countDocuments(query);
@@ -118,7 +152,6 @@ export const getProductsByCategory = async (req, res) => {
 // ── GET /api/products/:id ─────────────────────────────────────────────
 export const getProductById = async (req, res) => {
   try {
-    // Guard against invalid ObjectId → avoids CastError 500
     if (!mongoose.isValidObjectId(req.params.id))
       return res.status(400).json({ message: 'Invalid product ID' });
 
@@ -142,16 +175,13 @@ export const createProduct = async (req, res) => {
   try {
     const body = { ...req.body };
 
-    // Validate required fields
-    if (!body.title?.trim())           return res.status(400).json({ message: 'Title is required' });
-    if (!body.category?.trim())        return res.status(400).json({ message: 'Category is required' });
+    if (!body.title?.trim())             return res.status(400).json({ message: 'Title is required' });
+    if (!body.category?.trim())          return res.status(400).json({ message: 'Category is required' });
     if (!body.price || +body.price <= 0) return res.status(400).json({ message: 'Valid price required' });
 
-    // Numeric coercion
     for (const k of ['price', 'originalPrice', 'discount', 'stock', 'rating', 'numReviews']) {
       if (body[k] !== undefined) body[k] = Number(body[k]) || 0;
     }
-    // Array coercion
     for (const k of ['tags', 'features', 'compatibility']) {
       body[k] = parseArrayField(body[k]);
     }
@@ -161,7 +191,6 @@ export const createProduct = async (req, res) => {
 
     const product = await Product.create(body);
 
-    // Notify admin when a dealer adds a product
     if (req.user.role === 'dealer') {
       try {
         const User = (await import('../models/User.js')).default;
@@ -177,7 +206,6 @@ export const createProduct = async (req, res) => {
           });
         }
       } catch (notifErr) {
-        // Notification failure must NOT fail the whole request
         console.error('[createProduct] Notification error:', notifErr.message);
       }
     }
@@ -212,7 +240,6 @@ export const updateProduct = async (req, res) => {
 
     const updated = await Product.findByIdAndUpdate(req.params.id, body, { new: true, runValidators: true });
 
-    // Back-in-stock wishlist notifications
     if (product.stock === 0 && updated.stock > 0) {
       try {
         const Wishlist = (await import('../models/Wishlist.js')).default;
@@ -283,21 +310,16 @@ export const createReview = async (req, res) => {
 
     const Order = (await import('../models/Order.js')).default;
     const purchased = await Order.findOne({
-      user:              req.user._id,
-      orderStatus:       'Delivered',
+      user:                 req.user._id,
+      orderStatus:          'Delivered',
       'orderItems.product': product._id,
     });
     if (!purchased)
       return res.status(400).json({ message: 'You can only review products you have purchased and received' });
 
-    product.reviews.push({
-      user:    req.user._id,
-      name:    req.user.name,
-      rating:  parsedRating,
-      comment: comment || '',
-    });
+    product.reviews.push({ user: req.user._id, name: req.user.name, rating: parsedRating, comment: comment || '' });
     product.numReviews = product.reviews.length;
-    product.rating = product.reviews.reduce((a, r) => a + r.rating, 0) / product.reviews.length;
+    product.rating     = product.reviews.reduce((a, r) => a + r.rating, 0) / product.reviews.length;
     await product.save();
 
     res.status(201).json({ message: 'Review submitted', rating: product.rating, numReviews: product.numReviews });
@@ -324,9 +346,7 @@ export const updateReview = async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    const existing = product.reviews.find(
-      r => r.user.toString() === req.user._id.toString()
-    );
+    const existing = product.reviews.find(r => r.user.toString() === req.user._id.toString());
     if (!existing)
       return res.status(404).json({ message: 'You have not reviewed this product yet' });
 
