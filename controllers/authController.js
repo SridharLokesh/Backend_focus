@@ -43,10 +43,10 @@ export const register = async (req, res) => {
 };
 
 // POST /api/auth/login
-// Supports loginType: 'user' | 'dealer' | 'admin' from frontend
+// No loginType needed — role is read directly from the DB record
 export const login = async (req, res) => {
   try {
-    let { email, password, loginType = 'user' } = req.body;
+    let { email, password } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: 'Email and password are required' });
 
@@ -56,11 +56,13 @@ export const login = async (req, res) => {
     const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase().trim();
     const ADMIN_PASS  = String(process.env.ADMIN_PASSWORD || 'admin123');
 
-    // Admin auto-seed (only if credentials match admin)
+    // ── Admin: auto-seed on first login ────────────────────────────────
     if (email === ADMIN_EMAIL && password === ADMIN_PASS) {
       let admin = await User.findOne({ email: ADMIN_EMAIL });
       if (!admin) {
-        admin = await User.create({ name: 'Admin', email: ADMIN_EMAIL, password: ADMIN_PASS, role: 'admin' });
+        admin = await User.create({
+          name: 'Admin', email: ADMIN_EMAIL, password: ADMIN_PASS, role: 'admin',
+        });
         console.log('[AUTH] Admin account created for the first time');
       }
       return res.json({
@@ -73,6 +75,7 @@ export const login = async (req, res) => {
       });
     }
 
+    // ── All other users: find by email, role comes from DB ─────────────
     const user = await User.findOne({ email });
     if (!user)
       return res.status(401).json({ message: 'Invalid email or password' });
@@ -81,21 +84,16 @@ export const login = async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ message: 'Invalid email or password' });
 
-    if (loginType === 'dealer' && user.role !== 'dealer')
-      return res.status(403).json({ message: 'No dealer account found with these credentials' });
-
-    if (loginType === 'user' && user.role === 'dealer')
-      return res.status(403).json({ message: 'Please use "Login as Dealer" for dealer accounts' });
-
     if (!user.isActive)
       return res.status(403).json({ message: 'Your account has been deactivated. Contact support.' });
 
+    // role is already stored on the user document (user / dealer / admin)
     return res.json({
       _id:          user._id,
       name:         user.name,
       email:        user.email,
       role:         user.role,
-      dealerId:     user.dealerId || '',
+      dealerId:     user.dealerId     || '',
       businessName: user.businessName || '',
       token:        genToken(user._id),
     });
