@@ -1,17 +1,10 @@
 // controllers/siteSettingsController.js
 import SiteSettings from '../models/SiteSettings.js';
-import { v2 as cloudinary } from 'cloudinary';
-import streamifier from 'streamifier';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-/* ── upload buffer → Cloudinary ── */
-const uploadBuffer = (buffer, folder) =>
-  new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: 'image' },
-      (err, result) => (err ? reject(err) : resolve(result))
-    );
-    streamifier.createReadStream(buffer).pipe(stream);
-  });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /* ─────────────────────────────────────────
    GET /api/admin/site-settings
@@ -20,7 +13,7 @@ const uploadBuffer = (buffer, folder) =>
 export const getSettings = async (req, res) => {
   try {
     let settings = await SiteSettings.findOne();
-    if (!settings) settings = await SiteSettings.create({});   // seed defaults once
+    if (!settings) settings = await SiteSettings.create({});
     res.json(settings);
   } catch (err) {
     console.error('getSettings:', err);
@@ -31,12 +24,6 @@ export const getSettings = async (req, res) => {
 /* ─────────────────────────────────────────
    POST /api/admin/site-settings
    Admin only · multipart/form-data
-   Required body field:  section = 'navbar' | 'footer'
-
-   navbar fields : promoText, promoVisible, promoColor
-                   file: logoLight
-   footer fields : tagline, columns (JSON), socials (JSON), bottom (JSON)
-                   file: footerLogo
 ───────────────────────────────────────── */
 export const updateSettings = async (req, res) => {
   try {
@@ -57,8 +44,7 @@ export const updateSettings = async (req, res) => {
         settings.navbar.promoVisible = promoVisible === 'true' || promoVisible === true;
 
       if (req.files?.logoLight?.[0]) {
-        const r = await uploadBuffer(req.files.logoLight[0].buffer, 'tvs/logos');
-        settings.navbar.logoLight = r.secure_url;
+        settings.navbar.logoLight = `/uploads/logos/${req.files.logoLight[0].filename}`;
       }
     }
 
@@ -73,8 +59,7 @@ export const updateSettings = async (req, res) => {
       if (bottom)  settings.footer.bottom  = JSON.parse(bottom);
 
       if (req.files?.footerLogo?.[0]) {
-        const r = await uploadBuffer(req.files.footerLogo[0].buffer, 'tvs/logos');
-        settings.footer.logo = r.secure_url;
+        settings.footer.logo = `/uploads/logos/${req.files.footerLogo[0].filename}`;
       }
     }
 
