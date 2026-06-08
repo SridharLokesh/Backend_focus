@@ -1,5 +1,5 @@
 // models/SiteSettings.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const footerItemSchema = new mongoose.Schema({
   label: String,
@@ -7,12 +7,11 @@ const footerItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const footerColumnSchema = new mongoose.Schema({
-  id:      String,
-  type:    { type: String, enum: ['brand', 'links', 'contact'], default: 'links' },
-  title:   String,
-  enabled: { type: Boolean, default: true },
-  items:   [footerItemSchema],
-  // contact fields
+  id:          String,
+  type:        { type: String, enum: ['brand', 'links', 'contact'], default: 'links' },
+  title:       String,
+  enabled:     { type: Boolean, default: true },
+  items:       [footerItemSchema],
   phone:       String,
   phoneNote:   String,
   email:       String,
@@ -23,10 +22,10 @@ const footerColumnSchema = new mongoose.Schema({
 
 const siteSettingsSchema = new mongoose.Schema({
   navbar: {
-    promoText:    { type: String, default: 'Genuine TVS Parts & Accessories — Free shipping above ₹999 — 1 Year Warranty on all parts' },
+    promoText:    { type: String,  default: 'Genuine TVS Parts & Accessories — Free shipping above ₹999 — 1 Year Warranty on all parts' },
     promoVisible: { type: Boolean, default: true },
-    promoColor:   { type: String, default: '#de1c0e' },
-    logoLight:    { type: String, default: '' },  // navbar logo URL
+    promoColor:   { type: String,  default: '#de1c0e' },
+    logoLight:    { type: String,  default: '' },
   },
   footer: {
     logo:    { type: String, default: '' },
@@ -45,9 +44,7 @@ const siteSettingsSchema = new mongoose.Schema({
     },
   },
   updatedAt: { type: Date, default: Date.now },
-}, {
-  // Only one document ever — singleton pattern
-  collection: 'sitesettings',
-});
+}, { collection: 'sitesettings' });
 
-module.exports = mongoose.model('SiteSettings', siteSettingsSchema);
+const SiteSettings = mongoose.model('SiteSettings', siteSettingsSchema);
+export default SiteSettings;

@@ -15,6 +15,7 @@ import adminRoutes        from './routes/adminRoutes.js';
 import dealerRoutes       from './routes/dealerRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import categoryRoutes     from './routes/categoryRoutes.js';
+import siteSettingsRoutes from './routes/siteSettingsRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -36,7 +37,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth',          authRoutes);
@@ -49,6 +49,7 @@ app.use('/api/admin',         adminRoutes);
 app.use('/api/dealer',        dealerRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/categories',    categoryRoutes);
+app.use('/api/admin/site-settings', siteSettingsRoutes);
 
 app.get('/', (_req, res) => res.json({ status: 'TVS AutoParts API is running ✅' }));
 app.use((_req, res) => res.status(404).json({ message: 'Route not found' }));

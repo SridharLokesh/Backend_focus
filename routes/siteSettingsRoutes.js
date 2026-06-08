@@ -1,33 +1,30 @@
 // routes/siteSettingsRoutes.js
-const express   = require('express');
-const multer    = require('multer');
-const router    = express.Router();
-const { getSettings, updateSettings } = require('../controllers/siteSettingsController');
-const { protect, adminOnly } = require('../middleware/authMiddleware'); // adjust import to match your project
+import express  from 'express';
+import multer   from 'multer';
+import { getSettings, updateSettings } from '../controllers/siteSettingsController.js';
+import { protect, adminOnly } from '../middleware/authMiddleware.js'; // ← same middleware your other routes use
 
-/* multer — memory storage (buffers go straight to Cloudinary) */
-const storage = multer.memoryStorage();
-const upload  = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB max
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only image files allowed'), false);
-  },
+const router  = express.Router();
+
+/* multer: keep files in memory → stream to Cloudinary */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 2 * 1024 * 1024 },           // 2 MB
+  fileFilter: (_req, file, cb) =>
+    file.mimetype.startsWith('image/')
+      ? cb(null, true)
+      : cb(new Error('Only image files are allowed'), false),
 });
 
-/* File fields accepted in a single POST */
 const logoFields = upload.fields([
   { name: 'logoLight',  maxCount: 1 },
   { name: 'footerLogo', maxCount: 1 },
 ]);
 
-/* ── Routes ── */
-
-// GET  /api/admin/site-settings  — public read (navbar & footer use this)
+/* GET  /api/admin/site-settings  — public, no auth */
 router.get('/', getSettings);
 
-// POST /api/admin/site-settings  — admin only write
+/* POST /api/admin/site-settings  — admin only */
 router.post('/', protect, adminOnly, logoFields, updateSettings);
 
-module.exports = router;
+export default router;
