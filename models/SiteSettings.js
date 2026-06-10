@@ -66,24 +66,38 @@ const siteSettingsSchema = new mongoose.Schema(
       promoColor:   { type: String,  default: '#de1c0e' },
       logoLight:    { type: String,  default: '' },
     },
+/*footer*/
+   footer: {
+  logo: { type: String, default: '' },
 
-    /* ── Footer ── */
-    footer: {
-      logo:    { type: String, default: '' },
-      tagline: { type: String, default: 'Official online store for genuine TVS spare parts, accessories and lubricants. Quality assured. Warranty backed.' },
-      columns: { type: [footerColumnSchema], default: [] },
-      socials: {
-        facebook:  { type: String, default: '#' },
-        twitter:   { type: String, default: '#' },
-        instagram: { type: String, default: '#' },
-        youtube:   { type: String, default: '#' },
-      },
-      bottom: {
-        certified: { type: String, default: 'OEM Certified Parts' },
-        secure:    { type: String, default: 'Secure Checkout'     },
-        warranty:  { type: String, default: '1 Year Warranty'     },
-      },
-    },
+  tagline: {
+    type: String,
+    default: 'Official online store for genuine TVS spare parts, accessories and lubricants. Quality assured. Warranty backed.',
+  },
+
+  bgColor: {
+    type: String,
+    default: '#0a1f44',
+  },
+
+  columns: {
+    type: [footerColumnSchema],
+    default: [],
+  },
+
+  socials: {
+    facebook: { type: String, default: '#' },
+    twitter: { type: String, default: '#' },
+    instagram: { type: String, default: '#' },
+    youtube: { type: String, default: '#' },
+  },
+
+  bottom: {
+    certified: { type: String, default: 'OEM Certified Parts' },
+    secure: { type: String, default: 'Secure Checkout' },
+    warranty: { type: String, default: '1 Year Warranty' },
+  },
+},
 
     /* ── Become a Dealer page ── */
     dealerPage: {

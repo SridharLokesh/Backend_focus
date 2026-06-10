@@ -43,7 +43,6 @@ const upload = multer({
 const uploadFields = upload.fields([
   { name: 'logoLight',   maxCount: 1 },   // navbar logo
   { name: 'footerLogo',  maxCount: 1 }, // footer logo
-  { name: 'footerBgImage',  maxCount: 1 },  // footer image 
   { name: 'heroBgImage', maxCount: 1 },   // dealer page hero bg
   { name: 'ctaBgImage',  maxCount: 1 },   // customer care CTA bg
 ]);

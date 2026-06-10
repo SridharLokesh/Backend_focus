@@ -40,24 +40,25 @@ export const updateSettings = async (req, res) => {
         settings.navbar.logoLight = `/uploads/logos/${req.files.logoLight[0].filename}`;
       settings.markModified('navbar');
     }
-
-    /* ─── FOOTER ─── */
+/*footer*/
 else if (section === 'footer') {
   if (!settings.footer) settings.footer = {};
-  const { tagline, columns, socials, bottom, bgType, bgColor } = req.body;
+
+  const { tagline, columns, socials, bottom, bgColor } = req.body;
+
   if (tagline != null) settings.footer.tagline = tagline;
   if (columns != null) settings.footer.columns = JSON.parse(columns);
   if (socials != null) settings.footer.socials = JSON.parse(socials);
-  if (bottom  != null) settings.footer.bottom  = JSON.parse(bottom);
-  if (bgType  != null) settings.footer.bgType  = bgType;
+  if (bottom != null) settings.footer.bottom = JSON.parse(bottom);
   if (bgColor != null) settings.footer.bgColor = bgColor;
-  if (req.files?.footerLogo?.[0])
-    settings.footer.logo = `/uploads/logos/${req.files.footerLogo[0].filename}`;
-  if (req.files?.footerBgImage?.[0])
-    settings.footer.bgImage = `/uploads/site/${req.files.footerBgImage[0].filename}`;
+
+  if (req.files?.footerLogo?.[0]) {
+    settings.footer.logo =
+      `/uploads/logos/${req.files.footerLogo[0].filename}`;
+  }
+
   settings.markModified('footer');
 }
-
     /* ─── DEALER PAGE ─── */
     else if (section === 'dealerPage') {
       if (!settings.dealerPage) settings.dealerPage = {};
