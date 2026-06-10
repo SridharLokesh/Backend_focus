@@ -1,166 +1,125 @@
-// models/SiteSettings.js
-import mongoose from 'mongoose';
+// controllers/siteSettingsController.js
+import SiteSettings from '../models/SiteSettings.js';
 
-/* ─── footer sub-schemas ─── */
-const footerItemSchema = new mongoose.Schema(
-  { label: String, href: String },
-  { _id: false }
-);
-const footerColumnSchema = new mongoose.Schema(
-  {
-    id:          String,
-    type:        { type: String, enum: ['brand', 'links', 'contact'], default: 'links' },
-    title:       String,
-    enabled:     { type: Boolean, default: true },
-    items:       { type: [footerItemSchema], default: [] },
-    phone:       String,
-    phoneNote:   String,
-    email:       String,
-    emailNote:   String,
-    address:     String,
-    addressNote: String,
-  },
-  { _id: false }
-);
+/* ───────────────────────────────────────────────
+   GET /api/admin/site-settings
+   Public — all frontend pages read this on mount
+─────────────────────────────────────────────── */
+export const getSettings = async (req, res) => {
+  try {
+    let settings = await SiteSettings.findOne();
+    if (!settings) settings = await SiteSettings.create({});
+    res.json(settings);
+  } catch (err) {
+    console.error('getSettings:', err);
+    res.status(500).json({ message: 'Failed to load site settings' });
+  }
+};
 
-/* ─── dealer page sub-schemas ─── */
-const dealerBadgeSchema = new mongoose.Schema(
-  { text: { type: String, default: '' } },
-  { _id: false }
-);
-const dealerBenefitSchema = new mongoose.Schema(
-  {
-    icon:  { type: String, default: 'TrendingUp' },
-    title: { type: String, default: '' },
-    desc:  { type: String, default: '' },
-  },
-  { _id: false }
-);
+/* ───────────────────────────────────────────────
+   POST /api/admin/site-settings
+   Admin only · multipart/form-data
+   Required body field: section
+─────────────────────────────────────────────── */
+export const updateSettings = async (req, res) => {
+  try {
+    const { section } = req.body;
+    if (!section) return res.status(400).json({ message: '`section` is required' });
 
-/* ─── customer-care sub-schemas ─── */
-const supportChannelSchema = new mongoose.Schema(
-  {
-    icon:      { type: String, default: 'Phone' },
-    title:     { type: String, default: '' },
-    primary:   { type: String, default: '' },
-    secondary: { type: String, default: '' },
-    desc:      { type: String, default: '' },
-  },
-  { _id: false }
-);
-const faqSchema = new mongoose.Schema(
-  {
-    q: { type: String, default: '' },
-    a: { type: String, default: '' },
-  },
-  { _id: false }
-);
+    let settings = await SiteSettings.findOne();
+    if (!settings) settings = new SiteSettings({});
 
-/* ─── main schema ─── */
-const siteSettingsSchema = new mongoose.Schema(
-  {
-    /* ── Navbar ── */
-    navbar: {
-      promoText:    { type: String,  default: 'Genuine TVS Parts & Accessories — Free shipping above ₹999 — 1 Year Warranty on all parts' },
-      promoVisible: { type: Boolean, default: true  },
-      promoColor:   { type: String,  default: '#de1c0e' },
-      logoLight:    { type: String,  default: '' },
-    },
+    /* ─── NAVBAR ─── */
+    if (section === 'navbar') {
+      if (!settings.navbar) settings.navbar = {};
+      const { promoText, promoVisible, promoColor } = req.body;
+      if (promoText    != null) settings.navbar.promoText    = promoText;
+      if (promoColor   != null) settings.navbar.promoColor   = promoColor;
+      if (promoVisible != null) settings.navbar.promoVisible = promoVisible === 'true' || promoVisible === true;
+      if (req.files?.logoLight?.[0])
+        settings.navbar.logoLight = `/uploads/logos/${req.files.logoLight[0].filename}`;
+      settings.markModified('navbar');
+    }
 
-    /* ── Footer ── */
-    footer: {
-      logo:    { type: String, default: '' },
-      tagline: { type: String, default: 'Official online store for genuine TVS spare parts, accessories and lubricants. Quality assured. Warranty backed.' },
-      columns: { type: [footerColumnSchema], default: [] },
-      socials: {
-        facebook:  { type: String, default: '#' },
-        twitter:   { type: String, default: '#' },
-        instagram: { type: String, default: '#' },
-        youtube:   { type: String, default: '#' },
-      },
-      bottom: {
-        certified: { type: String, default: 'OEM Certified Parts' },
-        secure:    { type: String, default: 'Secure Checkout'     },
-        warranty:  { type: String, default: '1 Year Warranty'     },
-      },
-    },
+    /* ─── FOOTER ─── */
+    else if (section === 'footer') {
+      if (!settings.footer) settings.footer = {};
+      const { tagline, columns, socials, bottom } = req.body;
+      if (tagline != null) settings.footer.tagline = tagline;
+      if (columns != null) settings.footer.columns = JSON.parse(columns);
+      if (socials != null) settings.footer.socials = JSON.parse(socials);
+      if (bottom  != null) settings.footer.bottom  = JSON.parse(bottom);
+      if (req.files?.footerLogo?.[0])
+        settings.footer.logo = `/uploads/logos/${req.files.footerLogo[0].filename}`;
+      settings.markModified('footer');
+    }
 
-    /* ── Become a Dealer page ── */
-    dealerPage: {
-      heroTitle:    { type: String, default: 'Become a TVS Dealer' },
-      heroSubtitle: { type: String, default: "Partner with India's leading two-wheeler brand. Sell genuine TVS parts and grow your business." },
-      heroBgType:   { type: String, enum: ['color', 'image'], default: 'color' },
-      heroBgColor:  { type: String, default: '#0a1f44' },
-      heroBgImage:  { type: String, default: '' },
-      heroBadges:   {
-        type: [dealerBadgeSchema],
-        default: [
-          { text: 'No Joining Fee' },
-          { text: '4,000+ Partners Across India' },
-          { text: 'Your Own Dashboard' },
-        ],
-      },
-      whyTitle:    { type: String, default: 'Why Partner With Us?' },
-      whySubtitle: { type: String, default: 'Everything you need to build a successful parts dealership' },
-      benefits:    {
-        type: [dealerBenefitSchema],
-        default: [
-          { icon: 'TrendingUp', title: 'Earn More Revenue',    desc: 'Access TVS customer base and earn consistent income from spare parts sales.' },
-          { icon: 'Shield',     title: 'Official Partnership', desc: 'Become an authorised TVS dealer with official credentials and branding.' },
-          { icon: 'Store',      title: 'Your Own Dashboard',   desc: 'Manage products, track orders and monitor revenue all in one place.' },
-          { icon: 'Users',      title: 'Dedicated Support',    desc: 'Priority support from our dealer relations team and training materials.' },
-        ],
-      },
-    },
+    /* ─── DEALER PAGE ─── */
+    else if (section === 'dealerPage') {
+      if (!settings.dealerPage) settings.dealerPage = {};
+      const {
+        heroTitle, heroSubtitle, heroBgType, heroBgColor,
+        heroBadges, whyTitle, whySubtitle, benefits,
+      } = req.body;
+      if (heroTitle    != null) settings.dealerPage.heroTitle    = heroTitle;
+      if (heroSubtitle != null) settings.dealerPage.heroSubtitle = heroSubtitle;
+      if (heroBgType   != null) settings.dealerPage.heroBgType   = heroBgType;
+      if (heroBgColor  != null) settings.dealerPage.heroBgColor  = heroBgColor;
+      if (heroBadges   != null) settings.dealerPage.heroBadges   = JSON.parse(heroBadges);
+      if (whyTitle     != null) settings.dealerPage.whyTitle     = whyTitle;
+      if (whySubtitle  != null) settings.dealerPage.whySubtitle  = whySubtitle;
+      if (benefits     != null) settings.dealerPage.benefits     = JSON.parse(benefits);
+      if (req.files?.heroBgImage?.[0])
+        settings.dealerPage.heroBgImage = `/uploads/site/${req.files.heroBgImage[0].filename}`;
+      settings.markModified('dealerPage');
+    }
 
-    /* ── Customer Care / 24×7 Helpline page ── */
-    customerCare: {
-      heroTitle:        { type: String, default: '24 × 7 Customer Support' },
-      heroSubtitle:     { type: String, default: 'Expert help for genuine TVS parts, orders, delivery and service — any time, any day.' },
-      heroBgColor:      { type: String, default: '#0a1f44' },
+    /* ─── CUSTOMER CARE ─── */
+    else if (section === 'customerCare') {
+      if (!settings.customerCare) settings.customerCare = {};
+      const cc = settings.customerCare;
+      const {
+        heroTitle, heroSubtitle, heroBgColor,
+        channelsTitle, channelsSubtitle, channels,
+        faqTitle, faqSubtitle, faqs,
+        formTitle, formSubtitle, formEmail,
+        ctaTitle, ctaSubtitle, ctaBgType, ctaBgColor,
+        ctaPhone, ctaEmail, ctaHours,
+      } = req.body;
 
-      channelsTitle:    { type: String, default: 'Contact Us' },
-      channelsSubtitle: { type: String, default: 'Choose the channel that works best for you' },
-      channels: {
-        type: [supportChannelSchema],
-        default: [
-          { icon: 'Phone',         title: 'Call Support',      primary: '1800-258-6454',        secondary: 'Toll-free · 24 × 7',       desc: 'Speak directly with a TVS parts specialist' },
-          { icon: 'Mail',          title: 'Email Support',     primary: 'parts@tvsmotors.com',  secondary: 'Reply within 2–4 hours',   desc: 'Send your query, order ID or invoice' },
-          { icon: 'MessageCircle', title: 'Live Chat',         primary: 'Available on Website', secondary: 'Avg. response: 2 minutes', desc: 'Instant help from a support agent' },
-          { icon: 'Wrench',        title: 'Service Centre',    primary: 'Locate Nearest Centre',secondary: '4,000+ centres across India', desc: 'For installation, repair and diagnostics' },
-        ],
-      },
+      if (heroTitle        != null) cc.heroTitle        = heroTitle;
+      if (heroSubtitle     != null) cc.heroSubtitle     = heroSubtitle;
+      if (heroBgColor      != null) cc.heroBgColor      = heroBgColor;
+      if (channelsTitle    != null) cc.channelsTitle    = channelsTitle;
+      if (channelsSubtitle != null) cc.channelsSubtitle = channelsSubtitle;
+      if (channels         != null) cc.channels         = JSON.parse(channels);
+      if (faqTitle         != null) cc.faqTitle         = faqTitle;
+      if (faqSubtitle      != null) cc.faqSubtitle      = faqSubtitle;
+      if (faqs             != null) cc.faqs             = JSON.parse(faqs);
+      if (formTitle        != null) cc.formTitle        = formTitle;
+      if (formSubtitle     != null) cc.formSubtitle     = formSubtitle;
+      if (formEmail        != null) cc.formEmail        = formEmail;
+      if (ctaTitle         != null) cc.ctaTitle         = ctaTitle;
+      if (ctaSubtitle      != null) cc.ctaSubtitle      = ctaSubtitle;
+      if (ctaBgType        != null) cc.ctaBgType        = ctaBgType;
+      if (ctaBgColor       != null) cc.ctaBgColor       = ctaBgColor;
+      if (ctaPhone         != null) cc.ctaPhone         = ctaPhone;
+      if (ctaEmail         != null) cc.ctaEmail         = ctaEmail;
+      if (ctaHours         != null) cc.ctaHours         = ctaHours;
+      if (req.files?.ctaBgImage?.[0])
+        cc.ctaBgImage = `/uploads/site/${req.files.ctaBgImage[0].filename}`;
+      settings.markModified('customerCare');
+    }
 
-      faqTitle:    { type: String, default: 'Frequently Asked Questions' },
-      faqSubtitle: { type: String, default: 'Quick answers to common queries about TVS parts & orders' },
-      faqs: {
-        type: [faqSchema],
-        default: [
-          { q: 'How do I check if a part is compatible with my TVS bike?', a: 'Use the model search on our website. Enter your bike model and compatible parts will be listed.' },
-          { q: 'Are all parts on this store genuine TVS parts?',            a: 'Yes. Every part sold here is 100% genuine, sourced directly from TVS Motor Company.' },
-          { q: 'How do I track my parts order?',                            a: 'Go to My Orders in your profile. Each order shows real-time tracking.' },
-          { q: 'What is the return policy for spare parts?',                a: 'We offer a 10-day return policy for unused, unopened parts in original packaging.' },
-          { q: 'Can I cancel my order?',                                    a: 'Orders can be cancelled before they are shipped. Go to My Orders and click Cancel Order.' },
-        ],
-      },
+    else {
+      return res.status(400).json({ message: `Unknown section: "${section}"` });
+    }
 
-      formTitle:    { type: String, default: 'Send Us a Message' },
-      formSubtitle: { type: String, default: 'Fill the form and our team will respond within 2–4 hours' },
-      formEmail:    { type: String, default: 'parts@tvsmotors.com' },
-
-      ctaTitle:    { type: String, default: 'Still need help?' },
-      ctaSubtitle: { type: String, default: 'Our senior technical team handles escalated queries with priority turnaround.' },
-      ctaBgType:   { type: String, enum: ['color', 'image'], default: 'color' },
-      ctaBgColor:  { type: String, default: '#0a1f44' },
-      ctaBgImage:  { type: String, default: '' },
-      ctaPhone:    { type: String, default: '1800-258-6454' },
-      ctaEmail:    { type: String, default: 'parts@tvsmotors.com' },
-      ctaHours:    { type: String, default: '24 × 7 × 365' },
-    },
-
-    updatedAt: { type: Date, default: Date.now },
-  },
-  { collection: 'sitesettings' }
-);
-
-export default mongoose.model('SiteSettings', siteSettingsSchema);
+    settings.updatedAt = new Date();
+    await settings.save();
+    res.json({ message: 'Settings saved', settings });
+  } catch (err) {
+    console.error('updateSettings:', err);
+    res.status(500).json({ message: err.message || 'Failed to save settings' });
+  }
+};
