@@ -42,17 +42,21 @@ export const updateSettings = async (req, res) => {
     }
 
     /* ─── FOOTER ─── */
-    else if (section === 'footer') {
-      if (!settings.footer) settings.footer = {};
-      const { tagline, columns, socials, bottom } = req.body;
-      if (tagline != null) settings.footer.tagline = tagline;
-      if (columns != null) settings.footer.columns = JSON.parse(columns);
-      if (socials != null) settings.footer.socials = JSON.parse(socials);
-      if (bottom  != null) settings.footer.bottom  = JSON.parse(bottom);
-      if (req.files?.footerLogo?.[0])
-        settings.footer.logo = `/uploads/logos/${req.files.footerLogo[0].filename}`;
-      settings.markModified('footer');
-    }
+else if (section === 'footer') {
+  if (!settings.footer) settings.footer = {};
+  const { tagline, columns, socials, bottom, bgType, bgColor } = req.body;
+  if (tagline != null) settings.footer.tagline = tagline;
+  if (columns != null) settings.footer.columns = JSON.parse(columns);
+  if (socials != null) settings.footer.socials = JSON.parse(socials);
+  if (bottom  != null) settings.footer.bottom  = JSON.parse(bottom);
+  if (bgType  != null) settings.footer.bgType  = bgType;
+  if (bgColor != null) settings.footer.bgColor = bgColor;
+  if (req.files?.footerLogo?.[0])
+    settings.footer.logo = `/uploads/logos/${req.files.footerLogo[0].filename}`;
+  if (req.files?.footerBgImage?.[0])
+    settings.footer.bgImage = `/uploads/site/${req.files.footerBgImage[0].filename}`;
+  settings.markModified('footer');
+}
 
     /* ─── DEALER PAGE ─── */
     else if (section === 'dealerPage') {
