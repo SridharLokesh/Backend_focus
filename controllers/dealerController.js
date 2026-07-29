@@ -287,3 +287,101 @@ export const getDealerStats = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   INVOICE SETTINGS — dealer self-service branding for invoices
+═══════════════════════════════════════════════════════════════ */
+
+// GET /api/dealer/invoice-settings — dealer's own settings (dealer only)
+export const getMyInvoiceSettings = async (req, res) => {
+  try {
+    const dealer = await User.findById(req.user._id).select('invoiceSettings businessName dealerId email phone businessLocation');
+    if (!dealer) return res.status(404).json({ message: 'Dealer not found' });
+
+    // Return with sensible fallbacks pre-filled from the dealer's account,
+    // so the settings form starts populated even before the dealer edits anything.
+    const s = dealer.invoiceSettings || {};
+    res.json({
+      businessName:  s.businessName  || dealer.businessName || '',
+      logo:          s.logo          || '',
+      gstin:         s.gstin         || '',
+      address:       s.address       || dealer.businessLocation || '',
+      phone:         s.phone         || dealer.phone || '',
+      email:         s.email         || dealer.email || '',
+      bankName:      s.bankName      || '',
+      accountNumber: s.accountNumber || '',
+      ifsc:          s.ifsc          || '',
+      upiId:         s.upiId         || '',
+      footerNote:    s.footerNote    || 'Thank you for your business!',
+      invoicePrefix: s.invoicePrefix || 'INV',
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// PUT /api/dealer/invoice-settings — dealer updates own settings (dealer only, multipart for logo)
+export const updateMyInvoiceSettings = async (req, res) => {
+  try {
+    const dealer = await User.findById(req.user._id);
+    if (!dealer) return res.status(404).json({ message: 'Dealer not found' });
+
+    const {
+      businessName, gstin, address, phone, email,
+      bankName, accountNumber, ifsc, upiId, footerNote, invoicePrefix,
+    } = req.body;
+
+    if (!dealer.invoiceSettings) dealer.invoiceSettings = {};
+
+    if (businessName  != null) dealer.invoiceSettings.businessName  = businessName;
+    if (gstin          != null) dealer.invoiceSettings.gstin         = gstin;
+    if (address         != null) dealer.invoiceSettings.address       = address;
+    if (phone           != null) dealer.invoiceSettings.phone         = phone;
+    if (email           != null) dealer.invoiceSettings.email         = email;
+    if (bankName        != null) dealer.invoiceSettings.bankName      = bankName;
+    if (accountNumber   != null) dealer.invoiceSettings.accountNumber = accountNumber;
+    if (ifsc            != null) dealer.invoiceSettings.ifsc          = ifsc;
+    if (upiId           != null) dealer.invoiceSettings.upiId         = upiId;
+    if (footerNote      != null) dealer.invoiceSettings.footerNote    = footerNote;
+    if (invoicePrefix   != null) dealer.invoiceSettings.invoicePrefix = invoicePrefix.toUpperCase().slice(0, 10);
+
+    const logoFile = (req.files || []).find(f => f.fieldname === 'logo');
+    if (logoFile) dealer.invoiceSettings.logo = `/uploads/dealers/${logoFile.filename}`;
+
+    dealer.markModified('invoiceSettings');
+    await dealer.save();
+
+    res.json({ message: 'Invoice settings saved', invoiceSettings: dealer.invoiceSettings });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/dealer/invoice-settings/public/:dealerId — public read, used by the
+// customer's invoice page to render that dealer's branded invoice block.
+export const getPublicInvoiceSettings = async (req, res) => {
+  try {
+    const dealer = await User.findOne({ _id: req.params.dealerId, role: 'dealer' })
+      .select('invoiceSettings businessName dealerId businessLocation phone email');
+    if (!dealer) return res.status(404).json({ message: 'Dealer not found' });
+
+    const s = dealer.invoiceSettings || {};
+    res.json({
+      dealerId:      dealer.dealerId,
+      businessName:  s.businessName  || dealer.businessName || 'Dealer',
+      logo:          s.logo          || '',
+      gstin:         s.gstin         || '',
+      address:       s.address       || dealer.businessLocation || '',
+      phone:         s.phone         || dealer.phone || '',
+      email:         s.email         || dealer.email || '',
+      bankName:      s.bankName      || '',
+      accountNumber: s.accountNumber || '',
+      ifsc:          s.ifsc          || '',
+      upiId:         s.upiId         || '',
+      footerNote:    s.footerNote    || 'Thank you for your business!',
+      invoicePrefix: s.invoicePrefix || 'INV',
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

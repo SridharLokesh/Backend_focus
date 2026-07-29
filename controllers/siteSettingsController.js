@@ -1,6 +1,11 @@
 // controllers/siteSettingsController.js
 import SiteSettings from '../models/SiteSettings.js';
 
+/* helper: find an uploaded file by its exact fieldname
+   (req.files is a flat array when the route uses upload.any()) */
+const findFile = (req, fieldname) =>
+  (req.files || []).find(f => f.fieldname === fieldname);
+
 /* ───────────────────────────────────────────────
    GET /api/admin/site-settings
    Public — all frontend pages read this on mount
@@ -36,29 +41,30 @@ export const updateSettings = async (req, res) => {
       if (promoText    != null) settings.navbar.promoText    = promoText;
       if (promoColor   != null) settings.navbar.promoColor   = promoColor;
       if (promoVisible != null) settings.navbar.promoVisible = promoVisible === 'true' || promoVisible === true;
-      if (req.files?.logoLight?.[0])
-        settings.navbar.logoLight = `/uploads/logos/${req.files.logoLight[0].filename}`;
+
+      const logoFile = findFile(req, 'logoLight');
+      if (logoFile) settings.navbar.logoLight = `/uploads/logos/${logoFile.filename}`;
+
       settings.markModified('navbar');
     }
-/*footer*/
-else if (section === 'footer') {
-  if (!settings.footer) settings.footer = {};
 
-  const { tagline, columns, socials, bottom, bgColor } = req.body;
+    /* ─── FOOTER ─── */
+    else if (section === 'footer') {
+      if (!settings.footer) settings.footer = {};
+      const { tagline, columns, socials, bottom, bgColor } = req.body;
 
-  if (tagline != null) settings.footer.tagline = tagline;
-  if (columns != null) settings.footer.columns = JSON.parse(columns);
-  if (socials != null) settings.footer.socials = JSON.parse(socials);
-  if (bottom != null) settings.footer.bottom = JSON.parse(bottom);
-  if (bgColor != null) settings.footer.bgColor = bgColor;
+      if (tagline != null) settings.footer.tagline = tagline;
+      if (columns != null) settings.footer.columns = JSON.parse(columns);
+      if (socials != null) settings.footer.socials = JSON.parse(socials);
+      if (bottom  != null) settings.footer.bottom  = JSON.parse(bottom);
+      if (bgColor != null) settings.footer.bgColor = bgColor;
 
-  if (req.files?.footerLogo?.[0]) {
-    settings.footer.logo =
-      `/uploads/logos/${req.files.footerLogo[0].filename}`;
-  }
+      const footerLogoFile = findFile(req, 'footerLogo');
+      if (footerLogoFile) settings.footer.logo = `/uploads/logos/${footerLogoFile.filename}`;
 
-  settings.markModified('footer');
-}
+      settings.markModified('footer');
+    }
+
     /* ─── DEALER PAGE ─── */
     else if (section === 'dealerPage') {
       if (!settings.dealerPage) settings.dealerPage = {};
@@ -74,8 +80,10 @@ else if (section === 'footer') {
       if (whyTitle     != null) settings.dealerPage.whyTitle     = whyTitle;
       if (whySubtitle  != null) settings.dealerPage.whySubtitle  = whySubtitle;
       if (benefits     != null) settings.dealerPage.benefits     = JSON.parse(benefits);
-      if (req.files?.heroBgImage?.[0])
-        settings.dealerPage.heroBgImage = `/uploads/site/${req.files.heroBgImage[0].filename}`;
+
+      const heroBgFile = findFile(req, 'heroBgImage');
+      if (heroBgFile) settings.dealerPage.heroBgImage = `/uploads/site/${heroBgFile.filename}`;
+
       settings.markModified('dealerPage');
     }
 
@@ -111,9 +119,53 @@ else if (section === 'footer') {
       if (ctaPhone         != null) cc.ctaPhone         = ctaPhone;
       if (ctaEmail         != null) cc.ctaEmail         = ctaEmail;
       if (ctaHours         != null) cc.ctaHours         = ctaHours;
-      if (req.files?.ctaBgImage?.[0])
-        cc.ctaBgImage = `/uploads/site/${req.files.ctaBgImage[0].filename}`;
+
+      const ctaBgFile = findFile(req, 'ctaBgImage');
+      if (ctaBgFile) cc.ctaBgImage = `/uploads/site/${ctaBgFile.filename}`;
+
       settings.markModified('customerCare');
+    }
+
+    /* ─── HOMEPAGE ─── */
+    else if (section === 'homepage') {
+      if (!settings.homepage) settings.homepage = {};
+      const hp = settings.homepage;
+      const { banners, badges, sections: sectionsText } = req.body;
+
+      if (banners != null) {
+        const parsed = JSON.parse(banners);
+        // match each banner's uploaded file (bannerImage_<key>) back by bgImageKey
+        hp.banners = parsed.map(b => {
+          const { bgImageKey, ...rest } = b;
+          if (bgImageKey) {
+            const file = findFile(req, `bannerImage_${bgImageKey}`);
+            if (file) rest.bgImage = `/uploads/site/${file.filename}`;
+          }
+          return rest;
+        });
+      }
+
+      if (badges != null) hp.badges = JSON.parse(badges);
+      if (sectionsText != null) hp.sections = JSON.parse(sectionsText);
+
+      settings.markModified('homepage');
+    }
+
+    /* ─── LOGIN / REGISTER (authPage) ─── */
+    else if (section === 'authPage') {
+      if (!settings.authPage) settings.authPage = {};
+      const ap = settings.authPage;
+      const { loginHeading, loginSubtitle, registerHeading, registerSubtitle } = req.body;
+
+      if (loginHeading     != null) ap.loginHeading     = loginHeading;
+      if (loginSubtitle    != null) ap.loginSubtitle    = loginSubtitle;
+      if (registerHeading  != null) ap.registerHeading  = registerHeading;
+      if (registerSubtitle != null) ap.registerSubtitle = registerSubtitle;
+
+      const logoFile = findFile(req, 'logoImage');
+      if (logoFile) ap.logoImage = `/uploads/logos/${logoFile.filename}`;
+
+      settings.markModified('authPage');
     }
 
     else {

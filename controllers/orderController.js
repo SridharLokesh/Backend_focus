@@ -73,6 +73,7 @@ export const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
       .populate('orderItems.product', 'title image')
+      .populate('orderItems.dealer', 'name businessName dealerId')
       .sort('-createdAt');
     res.json(orders);
   } catch (err) {
@@ -120,7 +121,8 @@ export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('user', 'name email phone')
-      .populate('orderItems.product', 'title image brand');
+      .populate('orderItems.product', 'title image brand')
+      .populate('orderItems.dealer', 'name businessName dealerId');
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     if (req.user.role === 'user' && order.user._id.toString() !== req.user._id.toString())

@@ -56,6 +56,31 @@ const faqSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/* ─── homepage sub-schemas ─── */
+const homeBannerSchema = new mongoose.Schema(
+  {
+    title:    { type: String, default: '' },
+    subtitle: { type: String, default: '' },
+    btn:      { type: String, default: 'Shop Now' },
+    catSlug:  { type: String, default: '' },
+    bgType:   { type: String, enum: ['gradient', 'image'], default: 'gradient' },
+    bgFrom:   { type: String, default: '#0a1f44' },
+    bgTo:     { type: String, default: '#334155' },
+    bgImage:  { type: String, default: null },
+  },
+  { _id: false }
+);
+const homeBadgeSchema = new mongoose.Schema(
+  {
+    icon:  { type: String, default: 'Star' },
+    title: { type: String, default: '' },
+    sub:   { type: String, default: '' },
+    bg:    { type: String, default: '#eff6ff' },
+    ic:    { type: String, default: '#0a1f44' },
+  },
+  { _id: false }
+);
+
 /* ─── main schema ─── */
 const siteSettingsSchema = new mongoose.Schema(
   {
@@ -66,38 +91,39 @@ const siteSettingsSchema = new mongoose.Schema(
       promoColor:   { type: String,  default: '#de1c0e' },
       logoLight:    { type: String,  default: '' },
     },
-/*footer*/
-   footer: {
-  logo: { type: String, default: '' },
 
-  tagline: {
-    type: String,
-    default: 'Official online store for genuine TVS spare parts, accessories and lubricants. Quality assured. Warranty backed.',
-  },
+    /* ── Footer ── */
+    footer: {
+      logo: { type: String, default: '' },
 
-  bgColor: {
-    type: String,
-    default: '#0a1f44',
-  },
+      tagline: {
+        type: String,
+        default: 'Official online store for genuine TVS spare parts, accessories and lubricants. Quality assured. Warranty backed.',
+      },
 
-  columns: {
-    type: [footerColumnSchema],
-    default: [],
-  },
+      bgColor: {
+        type: String,
+        default: '#0a1f44',
+      },
 
-  socials: {
-    facebook: { type: String, default: '#' },
-    twitter: { type: String, default: '#' },
-    instagram: { type: String, default: '#' },
-    youtube: { type: String, default: '#' },
-  },
+      columns: {
+        type: [footerColumnSchema],
+        default: [],
+      },
 
-  bottom: {
-    certified: { type: String, default: 'OEM Certified Parts' },
-    secure: { type: String, default: 'Secure Checkout' },
-    warranty: { type: String, default: '1 Year Warranty' },
-  },
-},
+      socials: {
+        facebook: { type: String, default: '#' },
+        twitter: { type: String, default: '#' },
+        instagram: { type: String, default: '#' },
+        youtube: { type: String, default: '#' },
+      },
+
+      bottom: {
+        certified: { type: String, default: 'OEM Certified Parts' },
+        secure: { type: String, default: 'Secure Checkout' },
+        warranty: { type: String, default: '1 Year Warranty' },
+      },
+    },
 
     /* ── Become a Dealer page ── */
     dealerPage: {
@@ -170,6 +196,49 @@ const siteSettingsSchema = new mongoose.Schema(
       ctaPhone:    { type: String, default: '1800-258-6454' },
       ctaEmail:    { type: String, default: 'parts@tvsmotors.com' },
       ctaHours:    { type: String, default: '24 × 7 × 365' },
+    },
+
+    /* ── Home Page ── */
+    homepage: {
+      banners: {
+        type: [homeBannerSchema],
+        default: [
+          { title: 'Genuine TVS Engine Parts', subtitle: 'OEM-certified parts for peak performance', btn: 'Shop Engine Parts', catSlug: 'engine-parts', bgType: 'gradient', bgFrom: '#0a1f44', bgTo: '#334155' },
+          { title: 'Brake & Safety Components', subtitle: 'Stop safely with certified TVS brake systems', btn: 'Shop Brakes', catSlug: 'brakes', bgType: 'gradient', bgFrom: '#0f172a', bgTo: '#0a1f44' },
+          { title: 'TVS Accessories Sale', subtitle: 'Personalise your ride — up to 40% off', btn: 'Shop Accessories', catSlug: 'accessories', bgType: 'gradient', bgFrom: '#0d2657', bgTo: '#1e293b' },
+        ],
+      },
+      badges: {
+        type: [homeBadgeSchema],
+        default: [
+          { icon: 'Truck',      title: 'Free Delivery',  sub: 'Orders above ₹999',   bg: '#eff6ff', ic: '#0a1f44' },
+          { icon: 'Shield',     title: '100% Genuine',   sub: 'OEM certified parts', bg: '#f8fafc', ic: '#0a1f44' },
+          { icon: 'RotateCcw',  title: '10-Day Returns', sub: 'Hassle-free policy',  bg: '#f9fafb', ic: '#0a1f44' },
+          { icon: 'Headphones', title: '24×7 Support',   sub: '1800-258-6454',       bg: '#eff6ff', ic: '#0a1f44' },
+        ],
+      },
+      sections: {
+        categoriesTitle:     { type: String, default: 'Shop by Category' },
+        categoriesSubtitle:  { type: String, default: 'Genuine parts for every TVS model' },
+        featuredTitle:       { type: String, default: 'Featured Parts' },
+        featuredSubtitle:    { type: String, default: 'Top-selling genuine TVS components' },
+        recommendedTitle:    { type: String, default: 'Recommended For You' },
+        recommendedSubtitle: { type: String, default: 'Parts picked based on popular models' },
+        promoBadge:          { type: String, default: 'TVS Assured Quality' },
+        promoHeadingLine1:   { type: String, default: 'Every Part. Every Ride.' },
+        promoHeadingLine2:   { type: String, default: 'Guaranteed.' },
+        promoDescription:    { type: String, default: 'All parts carry a 1-year manufacturer warranty and pass 200+ quality checks.' },
+        promoButtonText:     { type: String, default: 'Browse All Parts' },
+      },
+    },
+
+    /* ── Login / Register page ── */
+    authPage: {
+      logoImage:        { type: String, default: '' },
+      loginHeading:      { type: String, default: 'Sign in to your account' },
+      loginSubtitle:     { type: String, default: 'Access genuine TVS parts and accessories' },
+      registerHeading:   { type: String, default: 'Create your account' },
+      registerSubtitle:  { type: String, default: 'Join TVS Motors — Official Parts Store' },
     },
 
     updatedAt: { type: Date, default: Date.now },

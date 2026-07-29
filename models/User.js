@@ -11,6 +11,27 @@ const addressSchema = new mongoose.Schema({
   isDefault: { type: Boolean, default: false },
 });
 
+/* ── Dealer's own invoice branding — used to render THAT dealer's
+     block on a customer's invoice, independently of other dealers
+     in the same order ── */
+const invoiceSettingsSchema = new mongoose.Schema(
+  {
+    businessName:  { type: String, default: '' }, // falls back to user.businessName if empty
+    logo:          { type: String, default: '' },
+    gstin:         { type: String, default: '' },
+    address:       { type: String, default: '' },
+    phone:         { type: String, default: '' },
+    email:         { type: String, default: '' },
+    bankName:      { type: String, default: '' },
+    accountNumber: { type: String, default: '' },
+    ifsc:          { type: String, default: '' },
+    upiId:         { type: String, default: '' },
+    footerNote:    { type: String, default: 'Thank you for your business!' },
+    invoicePrefix: { type: String, default: 'INV' },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name:           { type: String, required: true, trim: true },
@@ -30,6 +51,9 @@ const userSchema = new mongoose.Schema(
     dealerState:    { type: String, default: '' },
     dealerApproved: { type: Boolean, default: false },
     dealerRequestedAt: Date,
+
+    // Dealer invoice branding — editable by the dealer
+    invoiceSettings: { type: invoiceSettingsSchema, default: () => ({}) },
   },
   { timestamps: true }
 );

@@ -17,10 +17,12 @@ const siteDir  = path.join(__dirname, '..', 'uploads', 'site');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-/* ── disk storage — route each fieldname to its folder ── */
+/* ── disk storage — route each fieldname to its folder ──
+   logoLight / footerLogo / logoImage go to /uploads/logos
+   everything else (heroBgImage, ctaBgImage, bannerImage_<key>, ...) goes to /uploads/site */
 const storage = multer.diskStorage({
   destination: (_req, file, cb) => {
-    const inLogos = ['logoLight', 'footerLogo'].includes(file.fieldname);
+    const inLogos = ['logoLight', 'footerLogo', 'logoImage'].includes(file.fieldname);
     cb(null, inLogos ? logosDir : siteDir);
   },
   filename: (_req, file, cb) => {
@@ -39,18 +41,20 @@ const upload = multer({
       : cb(new Error('Only image files are allowed'), false),
 });
 
-/* Accept all 4 possible image fields in one middleware */
-const uploadFields = upload.fields([
-  { name: 'logoLight',   maxCount: 1 },   // navbar logo
-  { name: 'footerLogo',  maxCount: 1 }, // footer logo
-  { name: 'heroBgImage', maxCount: 1 },   // dealer page hero bg
-  { name: 'ctaBgImage',  maxCount: 1 },   // customer care CTA bg
-]);
+/* Accept ANY field name in one middleware.
+   Needed because:
+   - Home Page banners generate dynamic field names (bannerImage_<key>)
+     that can't be declared ahead of time with upload.fields([...])
+   - Login & Register page uploads logoImage
+   - The other sections' fixed fields (logoLight, footerLogo, heroBgImage, ctaBgImage)
+     still work fine, upload.any() accepts them too.
+   req.files becomes a flat array — see findFile() helper in the controller. */
+const uploadAny = upload.any();
 
 /* GET  /api/admin/site-settings  — public (navbar, footer, pages all read this) */
 router.get('/', getSettings);
 
 /* POST /api/admin/site-settings  — admin only */
-router.post('/', protect, adminOnly, uploadFields, updateSettings);
+router.post('/', protect, adminOnly, uploadAny, updateSettings);
 
 export default router;
